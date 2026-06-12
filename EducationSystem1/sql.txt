@@ -1,0 +1,94 @@
+-- ============================================
+-- СКРИПТ БАЗЫ ДАННЫХ — Образовательное учреждение
+-- СУБД: PostgreSQL
+-- ============================================
+
+-- Удаление таблиц если существуют (для пересоздания)
+DROP TABLE IF EXISTS payments CASCADE;
+DROP TABLE IF EXISTS grades CASCADE;
+DROP TABLE IF EXISTS schedules CASCADE;
+DROP TABLE IF EXISTS courses CASCADE;
+DROP TABLE IF EXISTS students CASCADE;
+DROP TABLE IF EXISTS teachers CASCADE;
+
+-- ============================================
+-- Таблица преподавателей
+-- ============================================
+CREATE TABLE teachers (
+    id          SERIAL PRIMARY KEY,
+    full_name   VARCHAR(150) NOT NULL,
+    subject     VARCHAR(100) NOT NULL
+);
+
+-- ============================================
+-- Таблица студентов
+-- ============================================
+CREATE TABLE students (
+    id               SERIAL PRIMARY KEY,
+    full_name        VARCHAR(150) NOT NULL,
+    group_name       VARCHAR(50)  NOT NULL,
+    enrollment_date  DATE         NOT NULL,
+    phone            VARCHAR(20)
+);
+
+-- ============================================
+-- Таблица курсов
+-- ============================================
+CREATE TABLE courses (
+    id             SERIAL PRIMARY KEY,
+    name           VARCHAR(150) NOT NULL,
+    teacher_id     INTEGER      NOT NULL REFERENCES teachers(id) ON DELETE RESTRICT,
+    hours_count    INTEGER      NOT NULL,
+    price_per_hour NUMERIC(10,2) NOT NULL
+);
+
+-- ============================================
+-- Таблица оценок (успеваемость)
+-- ============================================
+CREATE TABLE grades (
+    id          SERIAL PRIMARY KEY,
+    student_id  INTEGER      NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    course_id   INTEGER      NOT NULL REFERENCES courses(id)  ON DELETE CASCADE,
+    score       NUMERIC(5,2) NOT NULL,
+    grade_date  DATE         NOT NULL
+);
+
+-- ============================================
+-- Таблица платежей
+-- ============================================
+CREATE TABLE payments (
+    id             SERIAL PRIMARY KEY,
+    student_id     INTEGER       NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    amount         NUMERIC(10,2) NOT NULL,
+    payment_date   DATE          NOT NULL,
+    payment_type   VARCHAR(100)  NOT NULL
+);
+
+-- ============================================
+-- Тестовые данные (по 3 записи в каждую таблицу)
+-- ============================================
+
+INSERT INTO teachers (full_name, subject) VALUES
+    ('Иванов Алексей Петрович',   'Программирование'),
+    ('Петрова Мария Сергеевна',   'Базы данных'),
+    ('Сидоров Дмитрий Юрьевич',  'Математика');
+
+INSERT INTO students (full_name, group_name, enrollment_date, phone) VALUES
+    ('Козлов Иван Андреевич',     '413', '2022-09-01', '+373-69-111-111'),
+    ('Смирнова Анна Витальевна',  '413', '2022-09-01', '+373-69-222-222'),
+    ('Попов Сергей Николаевич',   '415', '2023-09-01', '+373-69-333-333');
+
+INSERT INTO courses (name, teacher_id, hours_count, price_per_hour) VALUES
+    ('Основы C#',        1, 60, 50.00),
+    ('PostgreSQL',       2, 40, 60.00),
+    ('Высшая математика',3, 80, 45.00);
+
+INSERT INTO grades (student_id, course_id, score, grade_date) VALUES
+    (1, 1, 85.0, '2024-01-15'),
+    (2, 1, 72.0, '2024-01-15'),
+    (3, 2, 91.0, '2024-02-20');
+
+INSERT INTO payments (student_id, amount, payment_date, payment_type) VALUES
+    (1, 3000.00, '2024-09-01', 'За семестр'),
+    (2, 3000.00, '2024-09-01', 'За семестр'),
+    (3, 1500.00, '2024-09-15', 'За курс');
