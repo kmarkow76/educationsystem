@@ -1,0 +1,48 @@
+-- 1. Таблица Врачи
+CREATE TABLE doctors(
+    id INT NOT NULL PRIMARY KEY,
+    fio VARCHAR(100) NOT NULL,
+    phone VARCHAR(12) NOT NULL,
+    specialties VARCHAR(100)
+);
+
+-- 2. Таблица Пациенты
+CREATE TABLE patients(
+    id INT NOT NULL PRIMARY KEY,
+    fio VARCHAR(100) NOT NULL,
+    dateofbirth DATE,
+    gender VARCHAR(100),
+    policy VARCHAR(16) NOT NULL,
+    address VARCHAR(100) NOT NULL,
+    phone VARCHAR(12) NOT NULL
+);
+
+-- 3. Таблица Приемы (Связывает врачей и пациентов + хранит диагноз/описание)
+CREATE TABLE appointments(
+    id INT NOT NULL PRIMARY KEY,
+    date DATE DEFAULT CURRENT_DATE,
+    doctor_id INT NOT NULL REFERENCES doctors(id) ON DELETE CASCADE, 
+    patient_id INT NOT NULL REFERENCES patients(id) ON DELETE CASCADE, 
+    description VARCHAR(100) -- Здесь хранится диагноз/жалобы по Заданию №1
+);
+
+-- Заполнение таблицы Врачи
+INSERT INTO doctors (id, fio, phone, specialties)
+VALUES 
+(1, 'Иванов Иван Иванович', '77712345', 'Терапевт'),
+(2, 'Васильев Василий Васильевич', '77798765', 'Хирург-ортопед'),
+(3, 'Дмитриева Елена Петровна', '77755544', 'Ортодонт');
+
+-- Заполнение таблицы Пациенты
+INSERT INTO patients (id, fio, dateofbirth, gender, policy, address, phone)
+VALUES 
+(1, 'Петров Петр Петрович', '1990-05-15', 'Мужской', '1234567890123456', 'ул. Ленина, д. 10', '77854321'),
+(2, 'Смирнова Анна Ивановна', '1995-08-25', 'Женский', '9876543210987654', 'ул. К. Маркса, д. 5', '77811122'),
+(3, 'Сидоров Сидор Сидорович', '1982-11-03', 'Мужской', '1111222233334444', 'ул. Гагарина, д. 12', '77900099');
+
+-- Заполнение таблицы Приемы (визиты за последний год для проверки алгоритма скидок)
+INSERT INTO appointments (id, date, doctor_id, patient_id, description)
+VALUES 
+(1, '2026-06-14', 1, 1, 'Жалобы на боль в зубе. Кариес.'),
+(2, '2026-05-10', 2, 2, 'Острый пульпит. Удаление нерва.'),
+(3, '2026-06-01', 3, 3, 'Консультация по брекет-системам.');
