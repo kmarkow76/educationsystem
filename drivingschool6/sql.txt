@@ -1,0 +1,60 @@
+CREATE TABLE students (
+    id SERIAL NOT NULL PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(16) NOT NULL, 
+    is_student BOOLEAN,
+    family_code VARCHAR(20) NOT NULL
+);
+
+CREATE TABLE vehicles (
+    id SERIAL NOT NULL PRIMARY KEY,
+    make VARCHAR(100) NOT NULL,
+    license_plate VARCHAR(10) NOT NULL,
+    type VARCHAR(16) NOT NULL
+);
+
+CREATE TABLE instructors (
+    id SERIAL NOT NULL PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(16) NOT NULL
+);
+
+CREATE TABLE courses (
+    id SERIAL NOT NULL PRIMARY KEY,
+    category VARCHAR(2) NOT NULL,
+    number_of_lessons INT NOT NULL,
+    base_price DECIMAL(10,2) NOT NULL
+);
+
+CREATE TABLE enrollments(
+    id SERIAL NOT NULL PRIMARY KEY,
+    student_id INT NOT NULL REFERENCES students(id),
+    instructor_id INT NOT NULL REFERENCES instructors(id),
+    car_id INT NOT NULL REFERENCES vehicles(id),
+    course_id INT NOT NULL REFERENCES courses(id),
+    start_date DATE NOT NULL,
+    payment_type VARCHAR(20) NOT NULL,
+    status VARCHAR(20) NOT NULL
+);
+
+-- 1. Добавление тестовых клиентов
+INSERT INTO clients (fio, phone, address) VALUES
+('Иванов Иван Иванович', '+79991112233', 'ул. Ленина, д. 10, кв. 5'),
+('Петрова Анна Сергеевна', '+79992223344', 'ул. Гагарина, д. 24, кв. 12'),
+('Сидоров Дмитрий Петрович', '+79993334455', 'ул. Свердлова, д. 8, кв. 50');
+
+-- 2. Добавление тестовых курьеров
+INSERT INTO couriers (fio, phone) VALUES
+('Быстров Олег Игоревич', '+79994445566'),
+('Скороходов Павел Александрович', '+79995556677'),
+('Тихонов Алексей Владимирович', '+79996667788');
+
+-- 3. Добавление тестовых заказов
+-- Используем разные даты и статусы для проверки будущих алгоритмов периода
+INSERT INTO orders (client_id, courier_id, order_date, status, price) VALUES
+(1, 1, '2026-06-01', 'Доставлен', 1500.00),
+(2, 1, '2026-06-10', 'Доставлен', 2300.50),
+(3, 2, '2026-06-14', 'В пути', 850.00),
+(1, 3, '2026-05-20', 'Доставлен', 3100.00),
+(2, 2, '2026-06-15', 'Новый', 1200.00);
+
