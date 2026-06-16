@@ -1,0 +1,90 @@
+-- ============================================================================
+-- 1. СОЗДАНИЕ ТАБЛИЦ (3НФ и обеспечение ссылочной целостности)
+-- ============================================================================
+
+-- Таблица: Клиенты
+CREATE TABLE clients (
+    id SERIAL PRIMARY KEY,
+    full_name VARCHAR(150) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    is_repeat BOOLEAN NOT NULL DEFAULT FALSE -- Флаг: повторный клиент (скидка 5%)
+);
+
+-- Таблица: Площадки
+CREATE TABLE venues (
+    id SERIAL PRIMARY KEY,
+    venue_name VARCHAR(150) NOT NULL,
+    address VARCHAR(250) NOT NULL,
+    rental_price NUMERIC(10, 2) NOT NULL CHECK (rental_price >= 0)
+);
+
+-- Таблица: Подрядчики / Услуги
+CREATE TABLE contractors (
+    id SERIAL PRIMARY KEY,
+    contractor_name VARCHAR(150) NOT NULL,
+    service_type VARCHAR(100) NOT NULL, -- Фотограф, Ведущий, Декор и т.д.
+    service_cost NUMERIC(10, 2) NOT NULL CHECK (service_cost >= 0)
+);
+
+-- Таблица: Мероприятия
+CREATE TABLE events (
+    id SERIAL PRIMARY KEY,
+    event_name VARCHAR(150) NOT NULL,
+    contract_date DATE NOT NULL DEFAULT CURRENT_DATE, -- Дата заключения договора
+    event_date DATE NOT NULL,                         -- Дата проведения
+    payment_status VARCHAR(50) NOT NULL DEFAULT 'Не оплачено', -- Не оплачено, Предоплата, Оплачено
+    client_id INT NOT NULL,
+    venue_id INT NOT NULL,
+    CONSTRAINT fk_event_client FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
+    CONSTRAINT fk_event_venue FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE,
+    CONSTRAINT chk_event_dates CHECK (event_date >= contract_date)
+);
+
+-- Таблица: Детали сметы (Разделение связи многие-ко-многим)
+CREATE TABLE event_details (
+    id SERIAL PRIMARY KEY,
+    event_id INT NOT NULL,
+    contractor_id INT NOT NULL,
+    CONSTRAINT fk_details_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    CONSTRAINT fk_details_contractor FOREIGN KEY (contractor_id) REFERENCES contractors(id) ON DELETE CASCADE
+);
+
+-- ============================================================================
+-- 2. НАПОЛНЕНИЕ ТЕСТОВЫМИ ДАННЫМИ (Минимум 3-5 строк)
+-- ============================================================================
+
+-- Заполнение клиентов
+INSERT INTO clients (full_name, phone, is_repeat) VALUES
+('Ковалев Максим Дмитриевич', '+37368111222', false),
+('Чебан Ирина Игоревна', '+37379333444', true),      -- Повторный клиент
+('Мельник Александр Сергеевич', '+37360555666', false),
+('Ротарь Ольга Владимировна', '+37378777888', true);   -- Повторный клиент
+
+-- Заполнение площадок
+INSERT INTO venues (venue_name, address, rental_price) VALUES
+('Ресторан "Golden Lion"', 'ул. Штефан чел Маре, 10', 15000.00),
+('Банкетный зал "Premium"', 'ул. Дечебал, 45', 22000.00),
+('Загородная вилла "Eco-Park"', 'с. Тогатин, ул. Лесная, 1', 35000.00),
+('Лофт-пространство "Urban"', 'ул. Заводская, 12', 10000.00);
+
+-- Заполнение подрядчиков / услуг
+INSERT INTO contractors (contractor_name, service_type, service_cost) VALUES
+('Дмитрий Шатров', 'Фотограф', 8000.00),
+('Андрей Корнилов', 'Ведущий', 12000.00),
+('Студия Флористики "Flora"', 'Декор зала', 15000.00),
+('Шоу-балет "Flash"', 'Развлекательная программа', 9000.00);
+
+-- Заполнение мероприятий
+-- Обрати внимание на даты проведения: у некоторых разница с договором больше 2 месяцев (Раннее бронирование)
+INSERT INTO events (event_name, contract_date, event_date, payment_status, client_id, venue_id) VALUES
+('Свадьба Максима и Анны', '2026-06-01', '2026-09-15', 'Предоплата', 1, 3),   -- Разница > 2 месяцев (Раннее)
+('Корпоратив компании "IT-Soft"', '2026-06-10', '2026-07-05', 'Не оплачено', 2, 1), -- Разница < 2 мес (Обычное), Повторный клиент
+('Юбилей Александра 50 лет', '2026-06-15', '2026-08-20', 'Оплачено', 3, 4),    -- Разница > 2 месяцев (Раннее)
+('День рождения Ольги', '2026-06-16', '2026-07-20', 'Предоплата', 4, 2);     -- Разница < 2 мес, Повторный клиент
+
+-- Заполнение сметы (какие услуги заказаны на мероприятия)
+INSERT INTO event_details (event_id, contractor_id) VALUES
+(1, 1), (1, 2), (1, 3), -- Свадьба: Фотограф, Ведущий, Декор
+(2, 2), (2, 4),         -- Корпоратив: Ведущий, Шоу-балет
+(3, 1), (3, 2),         -- Юбилей: Фотограф, Ведущий
+(4, 1), (4, 3);         -- День рождения: Фотограф, Декор
