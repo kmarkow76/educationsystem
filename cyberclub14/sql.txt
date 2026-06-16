@@ -1,0 +1,99 @@
+-- 1. Справочник тарифов (Почасовые и фиксированные пакеты)
+CREATE TABLE tariffs (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,                -- 'Standard', 'VIP', 'Пакет Ночь'
+    price_per_hour DECIMAL(10, 2) NOT NULL,   -- Базовая цена за час
+    is_night_package BOOLEAN DEFAULT FALSE    -- Флаг: является ли тарифом "Ночь"
+);
+
+-- 2. Игровые зоны (ПК, Консоли, VIP-комнаты)
+CREATE TABLE game_zones (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,                -- 'PC Common', 'VIP Room', 'PS5 Zone'
+    description TEXT
+);
+
+-- 3. Игровые места / Устройства (Компьютеры и консоли)
+CREATE TABLE gaming_places (
+    id SERIAL PRIMARY KEY,
+    zone_id INT NOT NULL REFERENCES game_zones(id) ON DELETE RESTRICT,
+    place_number INT NOT NULL UNIQUE,          -- Уникальный номер места/ПК в клубе
+    hardware_spec TEXT,                       -- Характеристики (RTX 4060, 16GB)
+    is_occupied BOOLEAN DEFAULT FALSE         -- Текущий статус занятости места
+);
+
+-- 4. Участники клуба (Клиенты)
+CREATE TABLE club_members (
+    id SERIAL PRIMARY KEY,
+    nickname VARCHAR(50) NOT NULL UNIQUE,     -- Игровой никнейм (уникальный)
+    full_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20),
+    has_club_card BOOLEAN DEFAULT FALSE       -- Наличие клубной карты (+10% скидка)
+);
+
+-- 5. Игровые сессии (Учет времени и аренды мест)
+CREATE TABLE game_sessions (
+    id SERIAL PRIMARY KEY,
+    member_id INT NOT NULL REFERENCES club_members(id) ON DELETE CASCADE,
+    place_id INT NOT NULL REFERENCES gaming_places(id) ON DELETE RESTRICT,
+    tariff_id INT NOT NULL REFERENCES tariffs(id) ON DELETE RESTRICT,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP,                       -- NULL, пока сессия активна
+    base_price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    discount_percent INT NOT NULL DEFAULT 0,  -- Рассчитанный суммарный % скидки
+    total_price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    status VARCHAR(20) NOT NULL DEFAULT 'Активна' -- 'Активна', 'Завершена', 'Пауза'
+);
+
+-- 6. Справочник товаров бара
+CREATE TABLE bar_products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    quantity_in_stock INT NOT NULL DEFAULT 0
+);
+
+-- 7. Продажи из бара в рамках игровых сессий
+CREATE TABLE bar_sales (
+    id SERIAL PRIMARY KEY,
+    session_id INT NOT NULL REFERENCES game_sessions(id) ON DELETE CASCADE,
+    product_id INT NOT NULL REFERENCES bar_products(id) ON DELETE RESTRICT,
+    quantity INT NOT NULL DEFAULT 1,
+    sale_price DECIMAL(10, 2) NOT NULL        -- Фиксация цены на момент продажи
+);
+
+-- Тарифы
+INSERT INTO tariffs (name, price_per_hour, is_night_package) VALUES
+('Standard PC', 150.00, FALSE),
+('VIP PC', 250.00, FALSE),
+('Пакет Ночь', 100.00, TRUE); -- Почасовая база для Ночи ниже, от неё пойдет скидка 40%
+
+-- Игровые зоны
+INSERT INTO game_zones (name, description) VALUES
+('Общий зал', 'ПК в общем игровом пространстве'),
+('VIP комната', 'Шумоизолированная зона, премиум кресла'),
+('Console Zone', 'Зона с PlayStation 5 и диванами');
+
+-- Компьютеры/Места
+INSERT INTO gaming_places (zone_id, place_number, hardware_spec, is_occupied) VALUES
+(1, 101, 'Core i5 / RTX 4060 / 16GB', FALSE),
+(1, 102, 'Core i5 / RTX 4060 / 16GB', FALSE),
+(2, 201, 'Core i7 / RTX 4080 / 32GB', FALSE);
+
+-- Участники
+INSERT INTO club_members (nickname, full_name, phone, has_club_card) VALUES
+('Neo', 'Иванов Александр Сергеевич', '+79991112233', TRUE),
+('Trin', 'Петрова Анна Владимировна', '+79992223344', FALSE),
+('Morpheus', 'Сидоров Петр Николаевич', '+79993334455', TRUE);
+
+-- Завершенные сессии (для проверки алгоритмов Задания №2)
+INSERT INTO game_sessions (member_id, place_id, tariff_id, start_time, end_time, base_price, discount_percent, total_price, status) VALUES
+(1, 1, 1, '2026-06-16 12:00:00', '2026-06-16 14:00:00', 300.00, 10, 270.00, 'Завершена'), -- place_id = 1 (это ПК №101)
+(2, 2, 2, '2026-06-16 15:00:00', '2026-06-16 18:00:00', 750.00, 0, 750.00, 'Завершена'),  -- place_id = 2 (это ПК №102)
+(3, 3, 3, '2026-06-15 23:00:00', '2026-06-16 08:00:00', 900.00, 50, 450.00, 'Завершена');  -- place_id = 3 (это ПК №201)
+
+-- Склад Бара
+INSERT INTO bar_products (name, price, quantity_in_stock) VALUES
+('Энергетик Adrenaline 0.5', 180.00, 50),
+('Чипсы Lays 140г', 140.00, 40),
+('Сэндвич с курицей', 200.00, 15);
