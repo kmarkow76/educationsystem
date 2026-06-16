@@ -1,0 +1,103 @@
+-- ========================================================
+-- 1. СОЗДАНИЕ ТАБЛИЦ (Учитывая 3НФ и ссылочную целостность)
+-- ========================================================
+
+-- Таблица фильмов
+CREATE TABLE movies (
+    movie_id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    duration_minutes INT NOT NULL,
+    genre VARCHAR(100) NOT NULL
+);
+
+-- Таблица кинозалов
+CREATE TABLE halls (
+    hall_id SERIAL PRIMARY KEY,
+    hall_name VARCHAR(50) NOT NULL,
+    total_seats INT NOT NULL
+);
+
+-- Таблица сотрудников
+CREATE TABLE employees (
+    employee_id SERIAL PRIMARY KEY,
+    full_name VARCHAR(150) NOT NULL,
+    position VARCHAR(100) NOT NULL
+);
+
+-- Таблица клиентов
+CREATE TABLE clients (
+    client_id SERIAL PRIMARY KEY,
+    full_name VARCHAR(150) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    is_regular INT DEFAULT 0 -- 1 - Постоянный (доп. скидка 5%), 0 - Обычный
+);
+
+-- Таблица сеансов (Связывает фильмы и залы)
+CREATE TABLE sessions (
+    session_id SERIAL PRIMARY KEY,
+    movie_id INT NOT NULL,
+    hall_id INT NOT NULL,
+    session_date TIMESTAMP NOT NULL,
+    base_price DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (movie_id) REFERENCES movies(movie_id) ON DELETE CASCADE,
+    FOREIGN KEY (hall_id) REFERENCES halls(hall_id) ON DELETE CASCADE
+);
+
+-- Таблица билетов (Учет продаж и бронирования)
+CREATE TABLE tickets (
+    ticket_id SERIAL PRIMARY KEY,
+    session_id INT NOT NULL,
+    client_id INT NOT NULL,
+    employee_id INT NOT NULL,
+    row_number INT NOT NULL,
+    seat_number INT NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    status VARCHAR(50) NOT NULL, -- 'Свободно', 'Забронировано', 'Продано'
+    FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE,
+    FOREIGN KEY (client_id) REFERENCES clients(client_id) ON DELETE CASCADE,
+    FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
+);
+
+-- ========================================================
+-- 2. ЗАПОЛНЕНИЕ ТАБЛИЦ ТЕСТОВЫМИ ДАННЫМИ (Минимум 3 записи)
+-- ========================================================
+
+-- Добавляем фильмы
+INSERT INTO movies (title, duration_minutes, genre) VALUES
+('Интерстеллар', 169, 'Фантастика'),
+('Начало', 148, 'Боевик/Фантастика'),
+('Зеленая миля', 189, 'Драма'),
+('Король Лев', 88, 'Мультфильм');
+
+-- Добавляем залы
+INSERT INTO halls (hall_name, total_seats) VALUES
+('Красный зал (IMAX)', 120),
+('Синий зал', 80),
+('VIP Комната', 25);
+
+-- Добавляем сотрудников
+INSERT INTO employees (full_name, position) VALUES
+('Иванов Сергей Петрович', 'Старший администратор'),
+('Петрова Анна Владимировна', 'Кассир-операционист'),
+('Сидоров Алексей Николаевич', 'Менеджер зала');
+
+-- Добавляем клиентов
+INSERT INTO clients (full_name, phone, is_regular) VALUES
+('Александров Александр Александрович', '+37377911111', 1), -- Постоянный
+('Мартынова Ольга Игоревна', '+37377922222', 0),
+('Дмитриев Николай Сергеевич', '+37377933333', 0),
+('Светлова Ирина Олеговна', '+37377944444', 1); -- Постоянный
+
+-- Добавляем сеансы
+INSERT INTO sessions (movie_id, hall_id, session_date, base_price) VALUES
+(1, 1, '2026-06-20 14:00:00', 150.00),
+(2, 2, '2026-06-20 18:30:00', 100.00),
+(3, 1, '2026-06-21 12:00:00', 120.00),
+(4, 3, '2026-06-21 16:00:00', 200.00);
+
+-- Добавляем билеты/брони
+INSERT INTO tickets (session_id, client_id, employee_id, row_number, seat_number, quantity, status) VALUES
+(1, 1, 2, 5, 12, 4, 'Продано'),       -- Купил 4 билета (будет скидка 10% + 5% регулярная)
+(2, 2, 2, 3, 5, 1, 'Продано'),        -- Купил 1 билет (без скидок)
+(3, 3, 1, 8, 10, 6, 'Забронировано'), -- Забронировал 6 мест (скидка 15%)
+(4, 4, 3, 2, 3, 2, 'Продано');        -- Купил 2 билета (скидка 5% как регулярному)
