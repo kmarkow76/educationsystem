@@ -1,0 +1,129 @@
+-- ============================================================
+-- 1. СТРУКТУРА БАЗЫ ДАННЫХ (3НФ)
+-- ============================================================
+
+-- Посетители (клиенты)
+CREATE TABLE Customers (
+    customer_id       SERIAL PRIMARY KEY,
+    full_name         VARCHAR(100) NOT NULL,
+    phone             VARCHAR(20),
+    email             VARCHAR(100),
+    is_permanent      BOOLEAN DEFAULT FALSE,
+    registration_date DATE DEFAULT CURRENT_DATE
+);
+
+-- Сотрудники
+CREATE TABLE Employees (
+    employee_id SERIAL PRIMARY KEY,
+    full_name   VARCHAR(100) NOT NULL,
+    position    VARCHAR(50),
+    phone       VARCHAR(20)
+);
+
+-- Столики
+CREATE TABLE Tables (
+    table_id     SERIAL PRIMARY KEY,
+    table_number INTEGER NOT NULL UNIQUE,
+    seats        INTEGER NOT NULL,
+    status       VARCHAR(20) DEFAULT 'free'   -- free, occupied, reserved
+);
+
+-- Блюда (меню)
+CREATE TABLE Dishes (
+    dish_id  SERIAL PRIMARY KEY,
+    name     VARCHAR(100) NOT NULL,
+    price    DECIMAL(10,2) NOT NULL,
+    category VARCHAR(50)
+);
+
+-- Заказы (РАСШИРЕННАЯ под Задание №2 и №3)
+CREATE TABLE Orders (
+    order_id         SERIAL PRIMARY KEY,
+    customer_id      INTEGER REFERENCES Customers(customer_id) ON DELETE SET NULL,
+    table_id         INTEGER REFERENCES Tables(table_id) ON DELETE SET NULL,
+    employee_id      INTEGER REFERENCES Employees(employee_id) ON DELETE SET NULL,
+    order_date       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status           VARCHAR(20) DEFAULT 'created',   -- created, cooking, done, paid
+    total_amount     DECIMAL(10,2) DEFAULT 0,         -- Сумма без скидки
+    discount_percent INTEGER DEFAULT 0,               -- Процент скидки (из Задания №2)
+    final_amount     DECIMAL(10,2) DEFAULT 0          -- Итоговая стоимость со скидкой
+);
+
+-- Детали заказа (позиции)
+CREATE TABLE OrderItems (
+    order_item_id  SERIAL PRIMARY KEY,
+    order_id       INTEGER NOT NULL REFERENCES Orders(order_id) ON DELETE CASCADE,
+    dish_id        INTEGER NOT NULL REFERENCES Dishes(dish_id) ON DELETE RESTRICT,
+    quantity       INTEGER NOT NULL CHECK (quantity > 0),
+    price_at_time  DECIMAL(10,2) NOT NULL   
+);
+
+-- Бронирования столиков
+CREATE TABLE Reservations (
+    reservation_id   SERIAL PRIMARY KEY,
+    customer_id      INTEGER NOT NULL REFERENCES Customers(customer_id) ON DELETE CASCADE,
+    table_id         INTEGER NOT NULL REFERENCES Tables(table_id) ON DELETE CASCADE,
+    reservation_time TIMESTAMP NOT NULL,
+    status           VARCHAR(20) DEFAULT 'active'   -- active, cancelled, completed
+);
+
+-- ============================================================
+-- 2. ТЕСТОВЫЕ ДАННЫХ (Не менее 3 записей в каждой таблице)
+-- ============================================================
+
+-- Посетители
+INSERT INTO Customers (full_name, phone, email, is_permanent, registration_date) VALUES
+('Иванов Иван Иванович', '+37377943743', 'ivan@mail.ru', TRUE, '2025-01-10'),     -- Постоянный
+('Петрова Анна Сергеевна', '+37377873743', 'anna@mail.ru', FALSE, '2025-02-15'),  -- Обычный
+('Сидоров Петр Петрович', '+37377932743', 'petr@mail.ru', TRUE, '2025-03-01');    -- Постоянный
+
+-- Сотрудники
+INSERT INTO Employees (full_name, position, phone) VALUES
+('Алексеева Мария Ивановна', 'Официант', '+7-999-444-5566'),
+('Козлов Дмитрий Алексеевич', 'Повар', '+7-999-555-6677'),
+('Смирнова Ольга Петровна', 'Администратор', '+7-999-666-7788');
+
+-- Столики
+INSERT INTO Tables (table_number, seats, status) VALUES
+(1, 2, 'free'),
+(2, 4, 'occupied'),
+(3, 6, 'free');
+
+-- Блюда
+INSERT INTO Dishes (name, price, category) VALUES
+('Цезарь с курицей', 450.00, 'Салаты'),
+('Стейк из говядины', 1200.00, 'Горячие блюда'),
+('Тирамису', 350.00, 'Десерты');
+
+-- Заказы (сначала создаем "пустышки")
+INSERT INTO Orders (customer_id, table_id, employee_id, order_date, status) VALUES
+(1, 1, 1, '2026-06-16 12:30:00', 'paid'),
+(2, 2, 1, '2026-06-16 13:00:00', 'cooking'),
+(3, 3, 2, '2026-06-16 14:15:00', 'created');
+
+-- Детали заказов
+INSERT INTO OrderItems (order_id, dish_id, quantity, price_at_time) VALUES
+(1, 1, 2, 450.00),   -- Заказ №1: 2*450 = 900
+(1, 2, 1, 1200.00),  -- Заказ №1: 1*1200 = 1200 (Всего: 2100)
+
+(2, 2, 2, 1200.00),  -- Заказ №2: 2*1200 = 2400
+(2, 3, 1, 350.00),   -- Заказ №2: 1*350 = 350 (Всего: 2750)
+
+(3, 1, 1, 450.00),   -- Заказ №3: 1*450 = 450
+(3, 3, 2, 350.00);   -- Заказ №3: 2*350 = 700 (Всего: 1150)
+
+-- Обновляем итоговые расчеты строго по правилам Задания №2:
+-- Заказ 1: 2100 руб. Скидка: >2000 руб (20%) + постоянный (5%) = 25%. Итого: 2100 - 25% = 1575
+UPDATE Orders SET total_amount = 2100.00, discount_percent = 25, final_amount = 1575.00 WHERE order_id = 1;
+
+-- Заказ 2: 2750 руб. Скидка: >2000 руб (20%) + обычный (0%) = 20%. Итого: 2750 - 20% = 2200
+UPDATE Orders SET total_amount = 2750.00, discount_percent = 20, final_amount = 2200.00 WHERE order_id = 2;
+
+-- Заказ 3: 1150 руб. Скидка: >1000 руб (10%) + постоянный (5%) = 15%. Итого: 1150 - 15% = 977.50
+UPDATE Orders SET total_amount = 1150.00, discount_percent = 15, final_amount = 977.50 WHERE order_id = 3;
+
+-- Бронирования
+INSERT INTO Reservations (customer_id, table_id, reservation_time, status) VALUES
+(1, 2, '2026-06-17 19:00:00', 'active'),
+(2, 1, '2026-06-18 14:00:00', 'active'),
+(3, 3, '2026-06-19 20:00:00', 'cancelled');
