@@ -1,0 +1,95 @@
+-- Маршруты
+CREATE TABLE routes (
+    id SERIAL NOT NULL PRIMARY KEY,
+    route_number VARCHAR(10) NOT NULL,
+    start_point VARCHAR(100) NOT NULL,
+    end_point VARCHAR(100) NOT NULL,
+    base_price DECIMAL(10,2) NOT NULL
+);
+
+-- Транспортные средства
+CREATE TABLE vehicles (
+    id SERIAL NOT NULL PRIMARY KEY,
+    license_plate VARCHAR(15) NOT NULL,
+    model VARCHAR(100) NOT NULL,
+    capacity INT NOT NULL,
+    type VARCHAR(50) NOT NULL  -- 'автобус', 'троллейбус', 'маршрутка'
+);
+
+-- Водители
+CREATE TABLE drivers (
+    id SERIAL NOT NULL PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(16) NOT NULL,
+    license_number VARCHAR(20) NOT NULL
+);
+
+-- Расписание рейсов
+CREATE TABLE schedule (
+    id SERIAL NOT NULL PRIMARY KEY,
+    route_id INT NOT NULL REFERENCES routes(id),
+    vehicle_id INT NOT NULL REFERENCES vehicles(id),
+    driver_id INT NOT NULL REFERENCES drivers(id),
+    departure_time TIME NOT NULL,
+    arrival_time TIME NOT NULL,
+    trip_date DATE NOT NULL,
+    status VARCHAR(20) NOT NULL  -- 'запланирован', 'выполняется', 'завершен', 'отменен'
+);
+
+-- Пассажиры
+CREATE TABLE passengers (
+    id SERIAL NOT NULL PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(16) NOT NULL,
+    is_privileged BOOLEAN NOT NULL DEFAULT FALSE,  -- льготный: скидка 50%
+    is_regular BOOLEAN NOT NULL DEFAULT FALSE       -- постоянный: скидка 10%
+);
+
+-- Билеты
+CREATE TABLE tickets (
+    id SERIAL NOT NULL PRIMARY KEY,
+    schedule_id INT NOT NULL REFERENCES schedule(id),
+    passenger_id INT NOT NULL REFERENCES passengers(id),
+    ticket_type VARCHAR(20) NOT NULL,  -- 'разовый', 'месячный'
+    purchase_date DATE NOT NULL
+);
+
+-- ========================
+-- Заполнение данными
+-- ========================
+
+-- Маршруты
+INSERT INTO routes (route_number, start_point, end_point, base_price) VALUES
+    ('101', 'Центр',      'Аэропорт',     85.00),
+    ('202', 'Вокзал',     'Университет',  45.00),
+    ('303', 'Северный',   'Южный рынок',  60.00);
+
+-- Транспортные средства
+INSERT INTO vehicles (license_plate, model, capacity, type) VALUES
+    ('А123БВ77', 'ЛиАЗ-5292',    80, 'автобус'),
+    ('В456ГД77', 'МАЗ-203',      90, 'автобус'),
+    ('М789КЛ77', 'ГАЗель Next',  20, 'маршрутка');
+
+-- Водители
+INSERT INTO drivers (full_name, phone, license_number) VALUES
+    ('Иванов Пётр Сергеевич',    '+79001112233', 'ВУ-123456'),
+    ('Козлов Андрей Викторович', '+79002223344', 'ВУ-234567'),
+    ('Морозов Дмитрий Олегович', '+79003334455', 'ВУ-345678');
+
+-- Расписание
+INSERT INTO schedule (route_id, vehicle_id, driver_id, departure_time, arrival_time, trip_date, status) VALUES
+    (1, 1, 1, '08:00', '08:45', '2025-06-01', 'завершен'),
+    (2, 2, 2, '09:30', '10:00', '2025-06-01', 'завершен'),
+    (3, 3, 3, '11:00', '11:40', '2025-06-02', 'запланирован');
+
+-- Пассажиры
+INSERT INTO passengers (full_name, phone, is_privileged, is_regular) VALUES
+    ('Сидорова Анна Ивановна',    '+79111234567', TRUE,  FALSE),  -- льготный, скидка 50%
+    ('Петров Алексей Николаевич', '+79222345678', FALSE, TRUE),   -- постоянный, скидка 10%
+    ('Захаров Олег Игоревич',     '+79333456789', FALSE, FALSE);  -- без скидки
+
+-- Билеты
+INSERT INTO tickets (schedule_id, passenger_id, ticket_type, purchase_date) VALUES
+    (1, 1, 'разовый',  '2025-06-01'),  -- льготный + разовый
+    (2, 2, 'месячный', '2025-06-01'),  -- постоянный + месячный: 10% + 15% = 25%
+    (3, 3, 'разовый',  '2025-06-02');  -- без скидки
