@@ -1,0 +1,91 @@
+-- Клиенты
+CREATE TABLE clients (
+    id SERIAL NOT NULL PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(16) NOT NULL,
+    is_regular BOOLEAN NOT NULL DEFAULT FALSE  -- постоянный клиент: скидка 5%
+);
+
+-- Сотрудники
+CREATE TABLE employees (
+    id SERIAL NOT NULL PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(16) NOT NULL,
+    position VARCHAR(100) NOT NULL  -- должность
+);
+
+-- Техника
+CREATE TABLE devices (
+    id SERIAL NOT NULL PRIMARY KEY,
+    client_id INT NOT NULL REFERENCES clients(id),
+    device_type VARCHAR(100) NOT NULL,   -- 'компьютер', 'телефон', 'бытовая техника'
+    brand VARCHAR(100) NOT NULL,
+    model VARCHAR(100) NOT NULL,
+    serial_number VARCHAR(50) NOT NULL
+);
+
+-- Запасные части
+CREATE TABLE spare_parts (
+    id SERIAL NOT NULL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    quantity_in_stock INT NOT NULL
+);
+
+-- Заявки на ремонт
+CREATE TABLE repair_requests (
+    id SERIAL NOT NULL PRIMARY KEY,
+    client_id INT NOT NULL REFERENCES clients(id),
+    device_id INT NOT NULL REFERENCES devices(id),
+    employee_id INT NOT NULL REFERENCES employees(id),
+    fault_description TEXT NOT NULL,   -- описание неисправности
+    work_list TEXT NOT NULL,           -- перечень работ
+    base_work_price DECIMAL(10,2) NOT NULL,  -- базовая стоимость работ
+    is_urgent BOOLEAN NOT NULL DEFAULT FALSE, -- срочность: +20%
+    status VARCHAR(20) NOT NULL,       -- 'принята', 'в ремонте', 'выполнена', 'выдана'
+    created_date DATE NOT NULL
+);
+
+-- Запасные части использованные в заявке
+CREATE TABLE request_parts (
+    id SERIAL NOT NULL PRIMARY KEY,
+    request_id INT NOT NULL REFERENCES repair_requests(id),
+    part_id INT NOT NULL REFERENCES spare_parts(id),
+    quantity INT NOT NULL
+);
+
+-- Клиенты
+INSERT INTO clients (full_name, phone, is_regular) VALUES
+    ('Иванов Алексей Петрович',   '+79001112233', TRUE),   -- постоянный, скидка 5%
+    ('Смирнова Ольга Николаевна', '+79002223344', FALSE),
+    ('Козлов Дмитрий Игоревич',  '+79003334455', TRUE);   -- постоянный, скидка 5%
+
+-- Сотрудники
+INSERT INTO employees (full_name, phone, position) VALUES
+    ('Петров Сергей Андреевич',   '+79111234567', 'Инженер по ремонту'),
+    ('Васильев Игорь Олегович',   '+79112345678', 'Старший техник'),
+    ('Морозова Елена Викторовна', '+79113456789', 'Диагност');
+
+-- Техника
+INSERT INTO devices (client_id, device_type, brand, model, serial_number) VALUES
+    (1, 'компьютер',       'ASUS',    'VivoBook 15',  'SN-AV15-001'),
+    (2, 'телефон',         'Samsung', 'Galaxy S21',   'SN-SGS21-002'),
+    (3, 'бытовая техника', 'LG',      'Washing WM5',  'SN-LGW5-003');
+
+-- Запасные части
+INSERT INTO spare_parts (name, price, quantity_in_stock) VALUES
+    ('Аккумулятор Samsung Galaxy S21', 1500.00, 10),
+    ('Оперативная память DDR4 8GB',    2500.00,  5),
+    ('Помпа для стиральной машины',    800.00,   8);
+
+-- Заявки на ремонт
+INSERT INTO repair_requests (client_id, device_id, employee_id, fault_description, work_list, base_work_price, is_urgent, status, created_date) VALUES
+    (1, 1, 1, 'Не включается ноутбук',         'Диагностика, замена термопасты, чистка',  2000.00, FALSE, 'выполнена', '2025-05-01'),
+    (2, 2, 2, 'Быстро разряжается аккумулятор','Диагностика, замена аккумулятора',        1500.00, TRUE,  'в ремонте', '2025-05-10'),
+    (3, 3, 3, 'Не отжимает бельё',             'Диагностика, замена помпы, тест',         1800.00, FALSE, 'принята',   '2025-05-15');
+
+-- Использованные запчасти в заявках
+INSERT INTO request_parts (request_id, part_id, quantity) VALUES
+    (1, 2, 1),  -- ноутбук: 1x оперативная память
+    (2, 1, 1),  -- телефон: 1x аккумулятор
+    (3, 3, 1);  -- стиралка: 1x помпа
