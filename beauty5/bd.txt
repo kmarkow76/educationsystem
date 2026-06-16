@@ -1,0 +1,81 @@
+-- 1. Таблица Клиентов (Соблюдена 3НФ, есть флаг постоянного клиента для скидки 5%)
+CREATE TABLE clients (
+    client_id SERIAL PRIMARY KEY,
+    full_name VARCHAR(150) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    is_regular INT NOT NULL DEFAULT 0 -- 1 - постоянный (скидка 5%), 0 - обычный
+);
+
+-- 2. Таблица Мастеров
+CREATE TABLE masters (
+    master_id SERIAL PRIMARY KEY,
+    full_name VARCHAR(150) NOT NULL,
+    specialization VARCHAR(100) NOT NULL,
+    phone VARCHAR(20) NOT NULL
+);
+
+-- 3. Таблица Услуг (Прайс-лист)
+CREATE TABLE services (
+    service_id SERIAL PRIMARY KEY,
+    service_name VARCHAR(150) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL
+);
+
+-- 4. Таблица Записей (Журнал визитов)
+CREATE TABLE appointments (
+    appointment_id SERIAL PRIMARY KEY,
+    client_id INT NOT NULL,
+    master_id INT NOT NULL,
+    appointment_date TIMESTAMP NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'Запланирована', -- Запланирована, Выполнена, Отменена
+    FOREIGN KEY (client_id) REFERENCES clients(client_id) ON DELETE CASCADE,
+    FOREIGN KEY (master_id) REFERENCES masters(master_id) ON DELETE CASCADE
+);
+
+-- 5. Промежуточная таблица: Детали записи (Содержит перечень оказанных услуг в визите)
+CREATE TABLE appointment_details (
+    detail_id SERIAL PRIMARY KEY,
+    appointment_id INT NOT NULL,
+    service_id INT NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    FOREIGN KEY (appointment_id) REFERENCES appointments(appointment_id) ON DELETE CASCADE,
+    FOREIGN KEY (service_id) REFERENCES services(service_id) ON DELETE CASCADE
+);
+
+
+
+
+-- Заполнение Клиентов (Один из них железно постоянный для теста)
+INSERT INTO clients (full_name, phone, is_regular) VALUES
+('Александрова Анна Игоревна', '+79991112233', 1), -- Постоянный клиент
+('Петрова Мария Сергеевна', '+79992223344', 0),
+('Иванова Дарья Дмитриевна', '+79993334455', 0),
+('Кузнецова Ольга Владимировна', '+79994445566', 0);
+
+-- Заполнение Мастеров
+INSERT INTO masters (full_name, specialization, phone) VALUES
+('Смирнова Елена', 'Стилист-колорист', '+79001110001'),
+('Краснова Ольга', 'Мастер маникюра', '+79002220002'),
+('Тихонова Алиса', 'Косметолог', '+79003330003');
+
+-- Заполнение Услуг (Цены подобраны для проверки порогов скидок 1000р и 2000р)
+INSERT INTO services (service_name, price) VALUES
+('Женская стрижка и укладка', 1200.00), -- Порог > 1000 (10%)
+('Окрашивание волос сложное', 2500.00), -- Порог > 2000 (20%)
+('Маникюр с покрытием Gelish', 800.00),   -- Меньше 1000 (0%)
+('Уходовая процедура лица', 1500.00);
+
+-- Заполнение Записей (Визиты)
+INSERT INTO appointments (client_id, master_id, appointment_date, status) VALUES
+(1, 1, '2026-06-16 10:00:00', 'Запланирована'), -- Клиент 1 (Постоянный)
+(2, 2, '2026-06-16 12:30:00', 'Выполнена'),
+(3, 1, '2026-06-17 15:00:00', 'Запланирована'),
+(4, 3, '2026-06-17 18:00:00', 'Отменена');
+
+-- Заполнение Деталей визитов (Какие услуги были/будут оказаны)
+INSERT INTO appointment_details (appointment_id, service_id, quantity) VALUES
+(1, 1, 1), -- Визит 1: Стрижка (1200) -> Сумма 1200 + скидка постоянного
+(2, 2, 1), -- Визит 2: Окрашивание (2500) -> Сумма 2500 (Скидка 20%)
+(2, 3, 1), -- Визит 2: Дополнительно маникюр (800)
+(3, 3, 1), -- Визит 3: Маникюр (800) -> Без скидки по сумме
+(4, 4, 1); -- Визит 4: Косметология (1500)
