@@ -1,0 +1,72 @@
+-- ============================================================================
+-- 1. СОЗДАНИЕ ТАБЛИЦ (3НФ и ссылочная целостность)
+-- ============================================================================
+
+-- Таблица: Клиенты
+CREATE TABLE clients (
+    id SERIAL PRIMARY KEY,
+    full_name VARCHAR(150) NOT NULL,
+    phone VARCHAR(20) NOT NULL
+);
+
+-- Таблица: Мастера
+CREATE TABLE masters (
+    id SERIAL PRIMARY KEY,
+    full_name VARCHAR(150) NOT NULL,
+    specialty VARCHAR(100) NOT NULL, -- Сантехник, Электрик и т.д.
+    rating NUMERIC(3, 2) NOT NULL CHECK (rating >= 0.00 AND rating <= 5.00)
+);
+
+-- Таблица: Виды работ / Услуги
+CREATE TABLE services (
+    id SERIAL PRIMARY KEY,
+    service_name VARCHAR(150) NOT NULL,
+    base_price NUMERIC(10, 2) NOT NULL CHECK (base_price >= 0)
+);
+
+-- Таблица: Заявки
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    client_id INT NOT NULL,
+    master_id INT NOT NULL,
+    service_id INT NOT NULL,
+    execution_address VARCHAR(250) NOT NULL,
+    execution_date DATE NOT NULL,
+    order_status VARCHAR(50) NOT NULL DEFAULT 'Новая', -- Новая, В работе, Выполнена, Отменена
+    CONSTRAINT fk_order_client FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
+    CONSTRAINT fk_order_master FOREIGN KEY (master_id) REFERENCES masters(id) ON DELETE CASCADE,
+    CONSTRAINT fk_order_service FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+);
+
+-- ============================================================================
+-- 2. НАПОЛНЕНИЕ ТЕСТОВЫМИ ДАННЫМИ (Минимум 3-5 строк на таблицу)
+-- ============================================================================
+
+-- Заполнение клиентов
+INSERT INTO clients (full_name, phone) VALUES
+('Иванов Петр Сергеевич', '+37368111111'),
+('Смирнова Анна Алексеевна', '+37379222222'),
+('Кузнецов Игорь Николаевич', '+37360333333'),
+('Попова Елена Васильевна', '+37378444444');
+
+-- Заполнение мастеров (обрати внимание на рейтинги для проверки бонусов)
+INSERT INTO masters (full_name, specialty, rating) VALUES
+('Петров Василий Иванович', 'Сантехник', 4.90),    -- Рейтинг > 4.8 (Получит бонус)
+('Сидоров Алексей Петрович', 'Электрик', 4.65),     -- Рейтинг < 4.8 (Обычная ставка)
+('Федоров Николай Владимирович', 'Сборщик мебели', 4.95), -- Рейтинг > 4.8 (Получит бонус)
+('Николаев Дмитрий Олегович', 'Разнорабочий', 4.50);
+
+-- Заполнение видов работ
+INSERT INTO services (service_name, base_price) VALUES
+('Установка смесителя и ремонт слива', 1200.00),
+('Монтаж светодиодной ленты и розеток', 2500.00),
+('Сборка кухонного гарнитура', 8000.00),
+('Замена замка в чижовой двери', 1500.00);
+
+-- Заполнение заявок (разные статусы, включая "Выполнена")
+INSERT INTO orders (client_id, master_id, service_id, execution_address, execution_date, order_status) VALUES
+(1, 1, 1, 'г. Кишинев, ул. Мира, д. 5, кв. 12', '2026-06-01', 'Выполнена'),
+(2, 2, 2, 'г. Кишинев, ул. Штефан чел Маре, д. 40', '2026-06-05', 'Выполнена'),
+(3, 3, 3, 'г. Кишинев, ул. Дачия, д. 18, кв. 99', '2026-06-10', 'В работе'),
+(4, 1, 4, 'г. Кишинев, ул. Албишоара, д. 3, кв. 4', '2026-06-12', 'Выполнена'),
+(1, 4, 2, 'г. Кишинев, ул. Пушкина, д. 25', '2026-06-14', 'Отменена');
