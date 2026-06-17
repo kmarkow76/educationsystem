@@ -1,0 +1,70 @@
+-- 1. ТАБЛИЦА: Поставщики / Контрагенты
+CREATE TABLE suppliers (
+    id SERIAL PRIMARY KEY,
+    company_name VARCHAR(150) NOT NULL,
+    contact_phone VARCHAR(20) NOT NULL,
+    is_permanent BOOLEAN DEFAULT FALSE NOT NULL -- Флаг "Постоянный контрагент" для скидки 5%
+);
+
+-- 2. ТАБЛИЦА: Сотрудники склада
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    full_name VARCHAR(150) NOT NULL,
+    position VARCHAR(100) NOT NULL
+);
+
+-- 3. ТАБЛИЦА: Товары
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    product_name VARCHAR(150) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    unit_of_measure VARCHAR(20) NOT NULL, -- Единица измерения (шт, кг, м)
+    quantity_in_stock INT NOT NULL DEFAULT 0 CHECK (quantity_in_stock >= 0), -- Контроль остатка
+    unit_price DECIMAL(12, 2) NOT NULL CHECK (unit_price >= 0),
+    supplier_id INT NOT NULL,
+    CONSTRAINT fk_product_supplier FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
+);
+
+-- 4. ТАБЛИЦА: Складские операции (Поступления и Выдачи)
+CREATE TABLE warehouse_operations (
+    id SERIAL PRIMARY KEY,
+    product_id INT NOT NULL,
+    employee_id INT NOT NULL,
+    operation_type VARCHAR(20) NOT NULL CHECK (operation_type IN ('Поступление', 'Выдача')),
+    quantity INT NOT NULL CHECK (quantity > 0),
+    operation_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    recipient_name VARCHAR(150), -- Получатель (заполняется при выдаче со склада)
+    CONSTRAINT fk_operation_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    CONSTRAINT fk_operation_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+);
+
+-- ============================================================================
+-- НАПОЛНЕНИЕ ТЕСТОВЫМИ ДАННЫМИ (Минимум 3-5 записей в каждую таблицу)
+-- ============================================================================
+
+-- Заполнение поставщиков (есть обычные, есть постоянные для проверки Задания №2)
+INSERT INTO suppliers (company_name, contact_phone, is_permanent) VALUES
+('ТехноОпт Плюс', '+7 (999) 111-22-33', true),
+('СтройСнаб Комплект', '+7 (999) 444-55-66', false),
+('ИнструментТрейд', '+7 (999) 777-88-99', true),
+('МеталлИнвест', '+7 (999) 000-11-22', false);
+
+-- Заполнение сотрудников
+INSERT INTO employees (full_name, position) VALUES
+('Иванов Сергей Петрович', 'Старший кладовщик'),
+('Петрова Анна Владимировна', 'Оператор учета БД'),
+('Сидоров Алексей Николаевич', 'Заведующий складом');
+
+-- Заполнение товаров (с указанием цен и начального количества на складе)
+INSERT INTO products (product_name, category, unit_of_measure, quantity_in_stock, unit_price, supplier_id) VALUES
+('Перфоратор ударный Bosch', 'Электроинструмент', 'шт', 25, 8500.00, 1),
+('Кабель медный ВВГ 3х2.5', 'Электрика', 'метр', 500, 120.00, 2),
+('Набор отверток профессиональный', 'Ручной инструмент', 'набор', 40, 2400.00, 3),
+('Краска интерьерная белая 10л', 'Малярные товары', 'ведро', 15, 3100.00, 4);
+
+-- Заполнение операций (для проверки алгоритмов подсчета стоимости и скидок)
+INSERT INTO warehouse_operations (product_id, employee_id, operation_type, quantity, operation_date, recipient_name) VALUES
+(1, 1, 'Поступление', 10, '2026-06-10', NULL),                         -- Обычное поступление
+(1, 2, 'Выдача', 2, '2026-06-12', 'ООО МегаСтрой'),                     -- Сумма 17000 (Скидка 5% + 5% за постоянного поставщика товара)
+(2, 1, 'Выдача', 450, '2026-06-14', 'ИП Кузнецов'),                     -- Сумма 54000 (Скидка 10% + 0% за непостоянного поставщика)
+(3, 3, 'Выдача', 1, '2026-06-15', 'Мастерской цех №2');                 -- Малая сумма (Скидка 0% + 5% за постоянного поставщика)
