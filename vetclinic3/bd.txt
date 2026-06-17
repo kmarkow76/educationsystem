@@ -1,0 +1,70 @@
+-- 1. ТАБЛИЦА: Владельцы животных
+CREATE TABLE owners (
+    id SERIAL PRIMARY KEY,
+    full_name VARCHAR(150) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    is_regular BOOLEAN DEFAULT FALSE NOT NULL -- Флаг "Постоянный клиент" для доп. скидки 5%
+);
+
+-- 2. ТАБЛИЦА: Животные (Электронная ветеринарная карта)
+CREATE TABLE animals (
+    id SERIAL PRIMARY KEY,
+    pet_name VARCHAR(100) NOT NULL,
+    species VARCHAR(50) NOT NULL, -- Вид (Кот, Собака, Попугай)
+    breed VARCHAR(100),           -- Порода
+    age_years INT NOT NULL CHECK (age_years >= 0),
+    owner_id INT NOT NULL,
+    CONSTRAINT fk_animal_owner FOREIGN KEY (owner_id) REFERENCES owners(id) ON DELETE CASCADE
+);
+
+-- 3. ТАБЛИЦА: Ветеринарные врачи
+CREATE TABLE vets (
+    id SERIAL PRIMARY KEY,
+    doctor_name VARCHAR(150) NOT NULL,
+    specialization VARCHAR(100) NOT NULL
+);
+
+-- 4. ТАБЛИЦА: Приемы животных
+CREATE TABLE appointments (
+    id SERIAL PRIMARY KEY,
+    animal_id INT NOT NULL,
+    vet_id INT NOT NULL,
+    appointment_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    diagnosis TEXT NOT NULL DEFAULT 'На обследовании',
+    treatment TEXT, -- Назначенное лечение / процедуры
+    services_cost DECIMAL(10, 2) NOT NULL CHECK (services_cost >= 0), -- Стоимость услуг
+    meds_cost DECIMAL(10, 2) NOT NULL DEFAULT 0.00 CHECK (meds_cost >= 0), -- Стоимость медикаментов
+    status VARCHAR(20) NOT NULL DEFAULT 'Запланирован' CHECK (status IN ('Запланирован', 'Проведен', 'Отменен')),
+    CONSTRAINT fk_appointment_animal FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE CASCADE,
+    CONSTRAINT fk_appointment_vet FOREIGN KEY (vet_id) REFERENCES vets(id) ON DELETE CASCADE
+);
+
+-- ============================================================================
+-- НАПОЛНЕНИЕ ТЕСТОВЫМИ ДАННЫМИ (Минимум 3-5 записей в каждую таблицу)
+-- ============================================================================
+
+-- Заполнение владельцев (есть обычные, есть постоянные)
+INSERT INTO owners (full_name, phone, is_regular) VALUES
+('Ковалев Дмитрий Алексеевич', '+373-777-11-222', true),
+('Морозова Елена Викторовна', '+373-691-33-444', false),
+('Чебан Иван Николаевич', '+373-778-55-666', true);
+
+-- Заполнение животных
+INSERT INTO animals (pet_name, species, breed, age_years, owner_id) VALUES
+('Барсик', 'Кот', 'Британский короткошерстный', 3, 1),
+('Рекс', 'Собака', 'Немецкая овчарка', 5, 2),
+('Кеша', 'Попугай', 'Волнистый', 1, 3),
+('Соня', 'Кот', 'Сфинкс', 2, 1);
+
+-- Заполнение ветеринаров
+INSERT INTO vets (doctor_name, specialization) VALUES
+('Федоров Игорь Владимирович', 'Терапевт-хирург'),
+('Смирнова Ольга Сергеевна', 'Вакцинатор-онколог'),
+('Дмитриев Андрей Петрович', 'Травматолог');
+
+-- Заполнение приемов (разные статусы и стоимости для проверки алгоритма Задания №2)
+INSERT INTO appointments (animal_id, vet_id, appointment_date, diagnosis, treatment, services_cost, meds_cost, status) VALUES
+(1, 1, '2026-06-14 10:00:00', 'Отит правого уха', 'Промывание, капли Суролан', 850.00, 450.00, 'Проведен'),      -- Услуги 850 (<1000). Мед: 450. Скидка хозяина: +5%.
+(2, 3, '2026-06-15 14:30:00', 'Растяжение лапы', 'Фиксирующая повязка, обезболивающее', 1200.00, 300.00, 'Проведен'),  -- Услуги 1200 (>1000 -> 5%). Хозяин не постоянный.
+(4, 1, '2026-06-16 09:15:00', 'Плановая вакцинация', 'Введение Мультифел-4', 3200.00, 800.00, 'Проведен'),          -- Услуги 3200 (>3000 -> 10%). Хозяин постоянный (+5%).
+(3, 2, '2026-06-17 11:00:00', 'Профилактический осмотр', 'Витаминный комплекс', 400.00, 150.00, 'Запланирован');     -- Будущий прием
